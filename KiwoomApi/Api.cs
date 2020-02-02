@@ -109,7 +109,7 @@ namespace Kiwoom
 
         private void M_axKHOpenAPI_OnReceiveConditionVer(object sender, AxKHOpenAPILib._DKHOpenAPIEvents_OnReceiveConditionVerEvent e)
         {
-            e.
+            //e.
             throw new NotImplementedException();
         }
 
