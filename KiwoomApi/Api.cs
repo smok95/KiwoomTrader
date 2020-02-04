@@ -18,6 +18,7 @@ namespace Kiwoom
         private static string SCR_NO_REQUEST_DATA = "0002";         // 시세데이터 요청
         private ILog log = null;
         public delegate void ConnectionStateHandler(Api sender);
+        public delegate void ConnectErrorHandler(Api sender, ErrorCode code);
         public delegate void ReceiveTrConditionHandler(Api sender, string[] strCodeList, ConditionInfo info);
 
         enum SearchConditionType:int
@@ -27,31 +28,93 @@ namespace Kiwoom
         }
 
         /// <summary>
-        /// 키움API접속성공시 발생하는 이벤트
+        /// 키움API접속 성공시 발생하는 이벤트
         /// </summary>
         public event ConnectionStateHandler OnConnected;
+
+        /// <summary>
+        /// 키움API접속 실패시 발생하는 이벤트
+        /// </summary>
+        public event ConnectErrorHandler OnConnectError;
 
         /// <summary>
         /// 사용자조건검색 결과 이벤트
         /// </summary>
         public event ReceiveTrConditionHandler OnReceiveTrCondition;
 
+        /// <summary>
+        /// 참고문서 : https://download.kiwoom.com/web/openapi/kiwoom_openapi_plus_devguide_ver_1.5.pdf
+        /// </summary>
         public enum ErrorCode : int
         {   
-            OP_ERR_NONE             = 0,    ///"정상처리" 
-            OP_ERR_LOGIN            =-100,  ///"사용자정보교환에 실패하였습니다. 잠시후 다시 시작하여 주십시오." 
-            OP_ERR_CONNECT          =-101,  ///"서버 접속 실패" 
-            OP_ERR_VERSION          =-102,  ///"버전처리가 실패하였습니다." 
-            OP_ERR_SISE_OVERFLOW    =-200,  ///”시세조회 과부하” 
-            OP_ERR_RQ_STRUCT_FAIL   =-201,  ///”REQUEST_INPUT_st Failed” 
-            OP_ERR_RQ_STRING_FAIL   =-202,  ///”요청 전문 작성 실패” 
-            OP_ERR_ORD_WRONG_INPUT  =-300,  ///”주문 입력값 오류” 
-            OP_ERR_ORD_WRONG_ACCNO  =-301,  ///”계좌비밀번호를 입력하십시오.” 
-            OP_ERR_OTHER_ACC_USE    =-302,  ///”타인계좌는 사용할 수 없습니다." 
-            OP_ERR_MIS_2BILL_EXC    =-303,  ///”주문가격이 20억원을 초과합니다.” 
-            OP_ERR_MIS_5BILL_EXC    =-304,  ///”주문가격은 50억원을 초과할 수 없습니다.” 
-            OP_ERR_MIS_1PER_EXC     =-305,  ///”주문수량이 총발행주수의 1%를 초과합니다.” 
-            OP_ERR_MID_3PER_EXC     =-306  ///”주문수량은 총발행주수의 3%를 초과할 수 없습니다.”   
+            /// <summary>정상처리</summary>
+            OP_ERR_NONE             = 0,
+            /// <summary>실패</summary>
+            OP_ERR_FAIL             =-10,   
+            /// <summary>조건번호 없음</summary>
+            OP_ERR_COND_NOTFOUND    =-11,
+            /// <summary>조건번호와 조건식 틀림</summary>
+            OP_ERR_COND_MISMATCH    =-12,
+            /// <summary>조건검색 조회요청 초과</summary>
+            OP_ERR_COND_OVERFLOW    =-13,
+            /// <summary>사용자정보 교환실패</summary>
+            OP_ERR_LOGIN            =-100,
+            /// <summary>서버접속 실패</summary>
+            OP_ERR_CONNECT          =-101,
+            /// <summary>버전처리 실패</summary>
+            OP_ERR_VERSION          =-102,
+            /// <summary>개인방화벽 실패</summary>
+            OP_ERR_FIREWALL         =-103,
+            /// <summary>메모리보호 실패</summary>
+            OP_ERR_MEMORY           =-104,
+            /// <summary>함수입력값 오류</summary>
+            OP_ERR_INPUT            =-105,
+            /// <summary>통신 연결종료</summary>
+            OP_ERR_SOCKET_CLOSED    =-106,
+            /// <summary>시세조회 과부하</summary>
+            OP_ERR_SISE_OVERFLOW    =-200,
+            /// <summary>전문작성 초기화 실패</summary>
+            OP_ERR_RQ_STRUCT_FAIL   =-201, 
+            /// <summary>전문작성 입력값 오류</summary>
+            OP_ERR_RQ_STRING_FAIL   =-202, 
+            /// <summary>데이터 없음</summary>
+            OP_ERR_NO_DATA          =-203,
+            /// <summary>조회 가능한 종목수 초과</summary>
+            OP_ERR_OVER_MAX_DATA    =-204,
+            /// <summary>데이터수신 실패</summary>
+            OP_ERR_DATA_RCV_FAIL    =-205,
+            /// <summary>조회 가능한 FID수초과</summary>
+            OP_ERR_OVER_MAX_FID     =-206,
+            /// <summary>실시간 해제 오류</summary>
+            OP_ERR_REAL_CANCEL      =-207,
+            /// <summary>입력값 오류</summary>
+            OP_ERR_ORD_WRONG_INPUT  =-300,
+            /// <summary>계좌 비밀번호 없음</summary>
+            OP_ERR_ORD_WRONG_ACCNO  =-301,
+            /// <summary>타인계좌사용 오류</summary>
+            OP_ERR_OTHER_ACC_USE    =-302,
+            /// <summary>주문가격이 20억원을 초과</summary>
+            OP_ERR_MIS_2BILL_EXC    =-303,
+            /// <summary>주문가격이 50억원을 초과</summary>
+            OP_ERR_MIS_5BILL_EXC    =-304,
+            /// <summary>주문수량이 총발행주수의 1%초과오류</summary>
+            OP_ERR_MIS_1PER_EXC     =-305,
+            /// <summary>주문수량이 총발행주수의 3%초과오류</summary>
+            OP_ERR_MID_3PER_EXC     =-306,
+            /// <summary>주문전송 실패</summary>
+            OP_ERR_SEND_FAIL        =-307,
+            /// <summary>주문전송 과부하</summary>
+            OP_ERR_ORD_OVERFLOW     =-308,
+            /// <summary>주문수량 300계약 초과</summary>
+            OP_ERR_MIS_300CNT_EXC   =-309,
+            /// <summary>주문수량 500계약 초과</summary>
+            OP_ERR_MIS_500CNT_EXC   =-310,
+            /// <summary>주문전송 과부하</summary>
+            OP_ERR_ORD_OVERFLOW2    =-311,
+            /// <summary>계좌정보없음</summary>
+            OP_ERR_ORD_WRONG_ACCTINFO=-340,
+            /// <summary>종목코드없음</summary>
+            OP_ERR_ORD_SYMCODE_EMPTY=-500
         }
 
         #region Properties
@@ -160,6 +223,7 @@ namespace Kiwoom
 
         /// <summary>
         /// 키움API 접속
+        /// 접속결과는 OnConnected, OnConnectError 이벤트로 확인
         /// </summary>
         public void Connect(){
             Disconnect();
@@ -261,8 +325,19 @@ namespace Kiwoom
         {
             log.Debug("errCode=" + e.nErrCode.ToString());
             Debug.WriteLine("KHOpenAPI_OnEventConnect=" + e.nErrCode.ToString());
-            if (OnConnected != null)
-                OnConnected(this);
+
+            ErrorCode eCode = (ErrorCode)e.nErrCode;
+
+            if(eCode== ErrorCode.OP_ERR_NONE)
+            {
+                if(OnConnected != null)
+                    OnConnected(this);
+            }
+            else
+            {
+                if (OnConnectError != null)
+                    OnConnectError(this, eCode);
+            }            
         }
     }
 }

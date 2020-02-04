@@ -45,19 +45,23 @@ namespace Trader
             Log.Init();
 
             log = Log.Get(this.GetType());
-            log.Debug("Start...");
             
             // 키움API객체 생성
             m_ctrl = new Kiwoom.Api();
             m_ctrl.OnConnected += M_ctrl_OnConnected;
+            m_ctrl.OnConnectError += M_ctrl_OnConnectError;
             m_ctrl.OnReceiveTrCondition += M_ctrl_OnReceiveTrCondition;
 
             // 그리드 생성
             DataGridTextColumn col = new DataGridTextColumn();
             col.Binding = new Binding("code");
             col.Header = "종목코드";
-
             //m_grid.Columns.Add(col);
+        }
+
+        private void M_ctrl_OnConnectError(Api sender, Api.ErrorCode code)
+        {
+            MessageBox.Show(string.Format("접속실패, 오류코드={0}", code));
         }
 
         private void M_ctrl_OnReceiveTrCondition(Api sender, string[] strCodeList, ConditionInfo info)
