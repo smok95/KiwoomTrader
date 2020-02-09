@@ -57,6 +57,21 @@ namespace Trader
             col.Binding = new Binding("code");
             col.Header = "종목코드";
             //m_grid.Columns.Add(col);
+
+            m_cbSearchCondition.SelectionChanged += M_cbSearchCondition_SelectionChanged;
+        }
+
+        private void M_cbSearchCondition_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ComboBox cb = (ComboBox)sender;
+
+
+            m_grid.ItemsSource = null;
+                
+            ConditionInfo info = (ConditionInfo)cb.SelectedValue;
+            if (info != null)
+                m_ctrl.RequestSearchCondition(info);
+            e.Handled = true;
         }
 
         private void M_ctrl_OnConnectError(Api sender, Api.ErrorCode code)
@@ -97,7 +112,9 @@ namespace Trader
             {   
                 m_tbLog.Text += acc + "\n";
             }
-                        
+                       
+            // 2020.02.09 OnConnected 시점에서 GetConditionInfoList()를 호출하면 오류가 발생할 수 있음.
+            // 접속이 완료되고 약간의 시간이 지난 후 호출해야 오류가 발생하지 않음.
             RefreshSearchConditionCombobox(ref m_cbSearchCondition);
         }
 
@@ -106,6 +123,11 @@ namespace Trader
         /// </summary>
         private void RefreshSearchConditionCombobox(ref ComboBox cbox)
         {
+            // 기존 콤보값 삭제
+            if (cbox.HasItems)
+            {
+                cbox.Items.Clear();
+            }
             Kiwoom.ConditionInfo[] condList = m_ctrl.GetConditionInfoList();
 
             cbox.DisplayMemberPath = "Key";
@@ -136,9 +158,6 @@ namespace Trader
             else if(sender == m_btnRequestCondition)
             {
                 RefreshSearchConditionCombobox(ref m_cbSearchCondition);
-                ConditionInfo info = (ConditionInfo)m_cbSearchCondition.SelectedValue;
-                if (info != null)
-                    m_ctrl.RequestSearchCondition(info);
             }
         }
            

@@ -300,6 +300,12 @@ namespace Kiwoom
             return m_axKHOpenAPI.SendCondition(SCR_NO_SEARCH_CONDITION, info.Name, (int)info.Index, (int)SearchConditionType.Realtime) == 1;
         }
         
+        /// <summary>
+        /// 복수종목 조회
+        /// </summary>
+        /// <param name="codeList">종목코드 리스트</param>
+        /// <returns></returns>
+        /// <remarks>한번에 요청가능한 개수는 최대 100개이며, 초과하는 경우 오류메시지박스가 뜬다. 2020.02.09 확인</remarks>
         public ErrorCode RequestData(string[] codeList)
         {
             string strCodes = string.Join(";", codeList);
