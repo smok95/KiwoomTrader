@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
 using log4net;
+using System.Threading;
 
 namespace Kiwoom
 {
@@ -17,6 +18,7 @@ namespace Kiwoom
         private static string SCR_NO_SEARCH_CONDITION   = "0001";   // 조건검색식 화면번호
         private static string SCR_NO_REQUEST_DATA = "0002";         // 시세데이터 요청
         private ILog log = null;
+        private AutoResetEvent autoReset = new AutoResetEvent(false);
         public delegate void ConnectionStateHandler(Api sender);
         public delegate void ConnectErrorHandler(Api sender, ErrorCode code);
         public delegate void ReceiveTrConditionHandler(Api sender, string[] strCodeList, ConditionInfo info);
@@ -167,14 +169,8 @@ namespace Kiwoom
             m_axKHOpenAPI.OnReceiveTrCondition += M_axKHOpenAPI_OnReceiveTrCondition;
             m_axKHOpenAPI.OnReceiveRealCondition += M_axKHOpenAPI_OnReceiveRealCondition;
             m_axKHOpenAPI.OnReceiveMsg += M_axKHOpenAPI_OnReceiveMsg;
-            m_axKHOpenAPI.OnReceiveConditionVer += M_axKHOpenAPI_OnReceiveConditionVer;
         }
 
-        private void M_axKHOpenAPI_OnReceiveConditionVer(object sender, AxKHOpenAPILib._DKHOpenAPIEvents_OnReceiveConditionVerEvent e)
-        {
-            //e.
-            throw new NotImplementedException();
-        }
 
         private void M_axKHOpenAPI_OnReceiveMsg(object sender, AxKHOpenAPILib._DKHOpenAPIEvents_OnReceiveMsgEvent e)
         {
@@ -218,7 +214,6 @@ namespace Kiwoom
                 sPrice = sPrice.Trim();
                 log.Debug("[" + i.ToString("00") + "] name=" + sName + ", price=" + sPrice);
             }
-            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -255,6 +250,20 @@ namespace Kiwoom
             Debug.Assert(ret != 0);
             if (ret > 0)
             {
+                int lRet = 0;
+                m_axKHOpenAPI.OnReceiveConditionVer += delegate (object sender, AxKHOpenAPILib._DKHOpenAPIEvents_OnReceiveConditionVerEvent e)
+                {                    
+                    log.Debug(string.Format("anonymous method as an event handler, iRet={0}, sMsg={1}", e.lRet, e.sMsg));
+                    lRet = e.lRet;
+                    autoReset.Set();
+                };
+
+                // OnReceiveConditionVer 수신대기(최대 3초간)
+                autoReset.WaitOne(3000);
+
+                if (lRet != 1)
+                    return list.ToArray();
+                
                 string str = m_axKHOpenAPI.GetConditionNameList();
                 log.Debug("수신받은 조건식목록='" + str + "'");
                 char[] sep = new char[] { ';' };
