@@ -220,21 +220,24 @@ namespace Kiwoom
         /// 키움API 접속
         /// 접속결과는 OnConnected, OnConnectError 이벤트로 확인
         /// </summary>
-        public void Connect(){
-            Disconnect();
+        public void Connect(){            
             m_axKHOpenAPI.CommConnect();
         }
 
         /// <summary>
         /// 키움API 접속종료
+        /// 
+        /// CommTerminate 지원하지 않는다고 함.
+        /// 별도의 종료방법이 없기 때문에 프로그램을 종료시켜야 함.
         /// </summary>
         public void Disconnect()
         {
-            if (IsConnected)
-            {
-                m_axKHOpenAPI.CommTerminate();
+            throw new Exception("키움API에서 CommTerminate()를 더 이상 지원하지 않아 Disconnect() 기능이 제공되지 않습니다.");
+            /*if (IsConnected)
+            {                
+                m_axKHOpenAPI.CommTerminate();                
                 log.Debug("KHOpenAPI.CommTerminate() Call...");
-            }
+            }*/
         }
 
         /// <summary>

@@ -39,18 +39,26 @@ namespace Trader
             }
         }
 
+        /// <summary>
+        /// 키움API객체 생성
+        /// </summary>
+        private void CreateKiwoomApi()
+        {
+            m_ctrl = new Kiwoom.Api();
+            m_ctrl.OnConnected += M_ctrl_OnConnected;
+            m_ctrl.OnConnectError += M_ctrl_OnConnectError;
+            m_ctrl.OnReceiveTrCondition += M_ctrl_OnReceiveTrCondition;
+        }
+
         public MainWindow()
         {
             InitializeComponent();
             Log.Init();
 
             log = Log.Get(this.GetType());
-            
+
             // 키움API객체 생성
-            m_ctrl = new Kiwoom.Api();
-            m_ctrl.OnConnected += M_ctrl_OnConnected;
-            m_ctrl.OnConnectError += M_ctrl_OnConnectError;
-            m_ctrl.OnReceiveTrCondition += M_ctrl_OnReceiveTrCondition;
+            CreateKiwoomApi();
 
             // 그리드 생성
             DataGridTextColumn col = new DataGridTextColumn();
@@ -142,7 +150,9 @@ namespace Trader
         {
             if (sender == m_btnDisconnect)
             {
-                m_ctrl.Disconnect();
+                m_ctrl.Dispose();
+                m_ctrl = null;
+                CreateKiwoomApi();
                 button.IsEnabled = true;
                 m_btnDisconnect.IsEnabled = false;
             }   

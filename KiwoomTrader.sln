@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Trader", "KiwoomTrader\Trader.csproj", "{567EBB4B-1E6D-46C1-B8C2-97F975AACD13}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kiwoom", "KiwoomApi\Kiwoom.csproj", "{40C091BE-E0B8-4647-BE9F-8553113A433C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "kiwoom-cli", "kiwoom-cli\kiwoom-cli.csproj", "{061892FD-4A42-4DC6-9DAD-81F4DCA4060E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,8 +33,19 @@ Global
 		{40C091BE-E0B8-4647-BE9F-8553113A433C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{40C091BE-E0B8-4647-BE9F-8553113A433C}.Release|x86.ActiveCfg = Release|x86
 		{40C091BE-E0B8-4647-BE9F-8553113A433C}.Release|x86.Build.0 = Release|x86
+		{061892FD-4A42-4DC6-9DAD-81F4DCA4060E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{061892FD-4A42-4DC6-9DAD-81F4DCA4060E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{061892FD-4A42-4DC6-9DAD-81F4DCA4060E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{061892FD-4A42-4DC6-9DAD-81F4DCA4060E}.Debug|x86.Build.0 = Debug|Any CPU
+		{061892FD-4A42-4DC6-9DAD-81F4DCA4060E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{061892FD-4A42-4DC6-9DAD-81F4DCA4060E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{061892FD-4A42-4DC6-9DAD-81F4DCA4060E}.Release|x86.ActiveCfg = Release|Any CPU
+		{061892FD-4A42-4DC6-9DAD-81F4DCA4060E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {25CACD16-2DB5-4A32-8B4F-27A299FDA96D}
 	EndGlobalSection
 EndGlobal
