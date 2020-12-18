@@ -22,20 +22,30 @@ namespace Trader
     /// </summary>
     public partial class MainWindow : Window
     {
-        private Kiwoom.Api m_ctrl = null;
+        private Kiwoom.Api api_ = null;
         private ILog log = null;
 
         public class Item
         {
+            /// <summary>
+            /// 종목코드
+            /// </summary>
             public string code
             {
                 get;
                 set;
             }
+                
+            /// <summary>
+            /// 종목명
+            /// </summary>
+            public string name
+            { get; set; }
 
-            public Item(string code)
+            public Item(string code, string name)
             {
                 this.code = code;
+                this.name = name;
             }
         }
 
@@ -44,10 +54,29 @@ namespace Trader
         /// </summary>
         private void CreateKiwoomApi()
         {
-            m_ctrl = new Kiwoom.Api();
-            m_ctrl.OnConnected += M_ctrl_OnConnected;
-            m_ctrl.OnConnectError += M_ctrl_OnConnectError;
-            m_ctrl.OnReceiveTrCondition += M_ctrl_OnReceiveTrCondition;
+            api_ = new Kiwoom.Api();
+            api_.OnConnected += api__OnConnected;
+            api_.OnConnectError += api__OnConnectError;
+            api_.OnReceiveTrCondition += api__OnReceiveTrCondition;
+            api_.OnReceiveTrData += Api__OnReceiveTrData;
+        }
+
+        private void Api__OnReceiveTrData(Api sender, ReceiveTrDataInfo info)
+        {
+            for (int i = 0; i < info.nDataLength; i++)
+            {
+                string sCode = api_.GetCommData(info, i, "종목코드");
+                string sName = api_.GetCommData(info, i, "종목명");
+                string sPrice = api_.GetCommData(info, i, "현재가");
+
+
+                log.Debug("[" + i.ToString("00") + "] code=" + sCode + ", name=" + sName + ", price=" + sPrice);
+
+                Item item = m_grid.Items.GetItemAt(i) as Item;
+                item.name = sName;
+
+            }
+            m_grid.Items.Refresh();
         }
 
         public MainWindow()
@@ -78,16 +107,15 @@ namespace Trader
                 
             ConditionInfo info = (ConditionInfo)cb.SelectedValue;
             if (info != null)
-                m_ctrl.RequestSearchCondition(info);
-            e.Handled = true;
+                api_.RequestSearchCondition(info);
         }
 
-        private void M_ctrl_OnConnectError(Api sender, Api.ErrorCode code)
+        private void api__OnConnectError(Api sender, Api.ErrorCode code)
         {
             MessageBox.Show(string.Format("접속실패, 오류코드={0}", code));
         }
 
-        private void M_ctrl_OnReceiveTrCondition(Api sender, string[] strCodeList, ConditionInfo info)
+        private void api__OnReceiveTrCondition(Api sender, string[] strCodeList, ConditionInfo info)
         {
             uint idx = 0;
 
@@ -95,27 +123,36 @@ namespace Trader
 
             foreach(string code in strCodeList)
             {
-                items.Add(new Item(code));
+                items.Add(new Item(code, ""));
                 log.Debug("조건검색 결과, 조건식명=" + info.Name + ",[" + idx.ToString() + "], code=" + code);
                 idx++;
             }
 
             m_grid.ItemsSource = items;
 
-            m_ctrl.RequestData(strCodeList);
+            if(api_.RequestData(strCodeList)== Api.ErrorCode.CUSTOM_ERR_REQUEST_LIMIT_EXCEEDED)
+            {
+                List<String> codelist = new List<String>();
+                foreach(string code in strCodeList.Take(100))
+                {
+                    codelist.Add(code);
+                }
+                // 100개 초과시 일단 100개로 줄여서 요청
+                api_.RequestData(codelist.ToArray());
+            }
         }
 
-        private void M_ctrl_OnConnected(Kiwoom.Api sender)
+        private void api__OnConnected(Kiwoom.Api sender)
         {
             m_btnDisconnect.IsEnabled = true;
             button.IsEnabled = false;
 
             m_tbLog.Text = "연결되었습니다!\n";
-            m_tbLog.Text += "사용자ID=" + m_ctrl.UserID + "\n";
-            m_tbLog.Text += "사용자명=" + m_ctrl.UserName + "\n";
+            m_tbLog.Text += "사용자ID=" + api_.UserID + "\n";
+            m_tbLog.Text += "사용자명=" + api_.UserName + "\n";
             m_tbLog.Text += "계좌목록\n";
 
-            string[] accList = m_ctrl.Accounts;
+            string[] accList = api_.Accounts;
             foreach(string acc in accList)
             {   
                 m_tbLog.Text += acc + "\n";
@@ -132,7 +169,7 @@ namespace Trader
             {
                 cbox.Items.Clear();
             }
-            Kiwoom.ConditionInfo[] condList = m_ctrl.GetConditionInfoList();
+            Kiwoom.ConditionInfo[] condList = api_.GetConditionInfoList();
 
             cbox.DisplayMemberPath = "Key";
             cbox.SelectedValuePath = "Value";
@@ -150,29 +187,33 @@ namespace Trader
         {
             if (sender == m_btnDisconnect)
             {
-                m_ctrl.Dispose();
-                m_ctrl = null;
+                api_.Dispose();
+                api_ = null;
                 CreateKiwoomApi();
                 button.IsEnabled = true;
                 m_btnDisconnect.IsEnabled = false;
             }   
             else if (sender == button)
             {
-                if (!m_ctrl.IsConnected)
-                    m_ctrl.Connect();
+                if (!api_.IsConnected)
+                    api_.Connect();
             }
             else if(sender == m_btnRequestCondition)
             {
+                if(!api_.IsConnected)
+                {
+                    MessageBox.Show("접속상태가 아닙니다.");
+                    return;
+                }
                 RefreshSearchConditionCombobox(ref m_cbSearchCondition);
             }
         }
            
 
         private void Window_Closed(object sender, EventArgs e)
-        {
-            m_ctrl.Disconnect();
+        {            
             log.Debug("Close...");
-            m_ctrl.Dispose();
+            api_.Dispose();
         }
     }
 }

@@ -1,11 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Drawing;
-using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Diagnostics;
 using log4net;
@@ -22,6 +16,7 @@ namespace Kiwoom
         public delegate void ConnectionStateHandler(Api sender);
         public delegate void ConnectErrorHandler(Api sender, ErrorCode code);
         public delegate void ReceiveTrConditionHandler(Api sender, string[] strCodeList, ConditionInfo info);
+        public delegate void ReceiveTrDataHandler(Api sender, ReceiveTrDataInfo info);
 
         enum SearchConditionType:int
         {
@@ -43,6 +38,11 @@ namespace Kiwoom
         /// 사용자조건검색 결과 이벤트
         /// </summary>
         public event ReceiveTrConditionHandler OnReceiveTrCondition;
+
+        /// <summary>
+        /// 조회데이터 수신 이벤트
+        /// </summary>
+        public event ReceiveTrDataHandler OnReceiveTrData;
 
         /// <summary>
         /// 참고문서 : https://download.kiwoom.com/web/openapi/kiwoom_openapi_plus_devguide_ver_1.5.pdf
@@ -116,7 +116,13 @@ namespace Kiwoom
             /// <summary>계좌정보없음</summary>
             OP_ERR_ORD_WRONG_ACCTINFO=-340,
             /// <summary>종목코드없음</summary>
-            OP_ERR_ORD_SYMCODE_EMPTY=-500
+            OP_ERR_ORD_SYMCODE_EMPTY=-500,
+
+            // -10000~ 부터는 키움API가 아닌 여기서 발생시키는 오류코드
+            /// <summary>
+            /// 요청 허용값 초과 
+            /// </summary>
+            CUSTOM_ERR_REQUEST_LIMIT_EXCEEDED = -1000,
         }
 
         #region Properties
@@ -202,18 +208,28 @@ namespace Kiwoom
             }   
         }
 
+        /// <summary>
+        /// 키움GetCommData와 거의 동일
+        /// 앞2개의 인수가 ReceiveTrDataInfo 1개 인자임.
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="index"></param>
+        /// <param name="itemName"></param>
+        /// <returns>Trim된 문자열값</returns>
+        public string GetCommData(ReceiveTrDataInfo info, int index, string itemName)
+        {
+            return m_axKHOpenAPI.GetCommData(info.sTrCode, info.sRecordName, index, itemName).Trim();
+        }
+
         private void M_axKHOpenAPI_OnReceiveTrData(object sender, AxKHOpenAPILib._DKHOpenAPIEvents_OnReceiveTrDataEvent e)
         {
+            if (OnReceiveTrData == null) return;
+
             int cCount = m_axKHOpenAPI.GetRepeatCnt(e.sTrCode, e.sRecordName);
 
-            for(int i=0; i<cCount; i++)
-            {
-                string sName = m_axKHOpenAPI.GetCommData(e.sTrCode, e.sRecordName, i, "종목명");
-                sName = sName.Trim();
-                string sPrice = m_axKHOpenAPI.GetCommData(e.sTrCode, e.sRecordName, i, "현재가");
-                sPrice = sPrice.Trim();
-                log.Debug("[" + i.ToString("00") + "] name=" + sName + ", price=" + sPrice);
-            }
+            ReceiveTrDataInfo info = new ReceiveTrDataInfo(e.sScrNo, e.sRQName, e.sTrCode, e.sRecordName, e.sPrevNext, cCount);
+
+            OnReceiveTrData(this, info);
         }
 
         /// <summary>
@@ -230,6 +246,7 @@ namespace Kiwoom
         /// CommTerminate 지원하지 않는다고 함.
         /// 별도의 종료방법이 없기 때문에 프로그램을 종료시켜야 함.
         /// </summary>
+        [Obsolete]
         public void Disconnect()
         {
             throw new Exception("키움API에서 CommTerminate()를 더 이상 지원하지 않아 Disconnect() 기능이 제공되지 않습니다.");
@@ -245,8 +262,11 @@ namespace Kiwoom
         /// </summary>
         /// <returns>조건식리스트</returns>
         public ConditionInfo[] GetConditionInfoList()
-        {
+        {           
+
             List<ConditionInfo> list = new List<ConditionInfo>();
+            if (!IsConnected)
+                return list.ToArray();
 
             // 서버에 저장된 사용자 조건식을 가져온다.
             int ret = m_axKHOpenAPI.GetConditionLoad();
@@ -320,6 +340,11 @@ namespace Kiwoom
         /// <remarks>한번에 요청가능한 개수는 최대 100개이며, 초과하는 경우 오류메시지박스가 뜬다. 2020.02.09 확인</remarks>
         public ErrorCode RequestData(string[] codeList)
         {
+            if(codeList.Length > 100)
+            {
+                return ErrorCode.CUSTOM_ERR_REQUEST_LIMIT_EXCEEDED;
+            }
+
             string strCodes = string.Join(";", codeList);
             /*
             LONG CommKwRqData(LPCTSTR sArrCode, BOOL bNext, int nCodeCount, int nTypeFlag, LPCTSTR sRQName, LPCTSTR sScreenNo) 
@@ -335,7 +360,9 @@ namespace Kiwoom
                 OP_ERR_RQ_STRING – 요청 전문 작성 실패 
                 OP_ERR_NONE - 정상처리 
             비고 
-                sArrCode – 종목간 구분은 ‘;’이다. nTypeFlag – 0:주식관심종목정보, 3:선물옵션관심종목정보 ex) openApi.CommKwRqData(“000660;005930”, 0, 2, 0, “RQ_1”, “0101”); */
+                sArrCode – 종목간 구분은 ‘;’이다. nTypeFlag – 0:주식관심종목정보, 3:선물옵션관심종목정보 
+                ex) openApi.CommKwRqData(“000660;005930”, 0, 2, 0, “RQ_1”, “0101”); 
+            */
             return (ErrorCode)m_axKHOpenAPI.CommKwRqData(strCodes, 0, codeList.Length, 0, "RQName", SCR_NO_REQUEST_DATA);
         }
 
